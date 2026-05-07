@@ -1,0 +1,31 @@
+name: Static Smoke Test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Serve static site
+        run: |
+          python3 -m http.server 4173 &
+          echo $! > /tmp/rockdale-msp-http.pid
+          sleep 2
+
+      - name: Verify index loads
+        run: |
+          curl --fail --silent --show-error http://127.0.0.1:4173/ > /tmp/index.html
+          grep -q "Rockdale MSP Launch Tracker" /tmp/index.html
+          grep -q "rockdale-msp-launch-active-tab-v1" /tmp/index.html
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f /tmp/rockdale-msp-http.pid ]; then
+            kill "$(cat /tmp/rockdale-msp-http.pid)" || true
+          fi

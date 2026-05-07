@@ -10,16 +10,21 @@ Interactive 60-day launch tracker for starting a local IT Managed Service Provid
 ## Tracker Features
 
 - 8-week milestone checklist with live progress
-- Month 1 and Month 2 completion rings
+- Dashboard next-action cards for the next incomplete launch tasks
+- Month 1 and Month 2 completion rings with launch phase labels
+- MRR insights for clients logged, average MRR, $3K gap, and estimated clients needed
 - Editable week timeline with downstream auto-shift
 - Budget tracker for projected vs. actual spend
 - MRR tracker with break-even, $3K, and $8K progress targets
+- Mobile-friendly horizontal tab navigation
 - Vendor signup checklist
 - Required forms checklist
 - Weekly notes/journal
 - Dark/light mode
-- localStorage persistence
-- JSON export/import
+- localStorage persistence for launch data
+- Remembers the last opened tracker page/tab in localStorage
+- JSON export/import with basic backup validation
+- Safer reset flow that requires typing `RESET`
 - Print/export snapshot support
 - Mobile-friendly layout
 
@@ -41,6 +46,12 @@ https://elspaniard97.github.io/rockdale-msp-launch/
 ## Data Storage Warning
 
 The tracker stores progress in browser `localStorage`. Export your progress JSON regularly if you use multiple browsers or devices.
+
+The active page/tab is also stored locally, so the tracker reopens to the last section you were using.
+
+## License
+
+MIT. See `LICENSE`.
 
 ## Suggested Initial Git Commands
 

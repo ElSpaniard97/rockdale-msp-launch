@@ -26,6 +26,15 @@
   <script type="text/babel">
     const { useEffect, useMemo, useState } = React;
     const STORAGE_KEY = "rockdale-msp-launch-v1";
+    const ACTIVE_TAB_STORAGE_KEY = "rockdale-msp-launch-active-tab-v1";
+    const NAV_TABS = ["Dashboard","Timeline","Budget","MRR","Vendors","Forms","Notes"];
+
+    const safeLocalStorageGet = (key, fallback = null) => {
+      try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+    };
+    const safeLocalStorageSet = (key, value) => {
+      try { localStorage.setItem(key, value); } catch {}
+    };
 
     const todayISO = () => new Date().toISOString().slice(0,10);
     const addDays = (iso, days) => {
@@ -67,6 +76,24 @@
       lastCelebrated: []
     });
 
+    const normalizeImportedState = imported => {
+      if (!imported || typeof imported !== 'object' || Array.isArray(imported)) throw new Error('Backup must be a JSON object.');
+      const initial = makeInitialState();
+      return {
+        ...initial,
+        ...imported,
+        theme: imported.theme === 'light' ? 'light' : 'dark',
+        startDate: typeof imported.startDate === 'string' ? imported.startDate : initial.startDate,
+        tasks: {...initial.tasks, ...(imported.tasks && typeof imported.tasks === 'object' ? imported.tasks : {})},
+        notes: {...initial.notes, ...(imported.notes && typeof imported.notes === 'object' ? imported.notes : {})},
+        budget: Array.isArray(imported.budget) ? imported.budget : initial.budget,
+        clients: Array.isArray(imported.clients) ? imported.clients : initial.clients,
+        vendors: Array.isArray(imported.vendors) ? imported.vendors : initial.vendors,
+        forms: Array.isArray(imported.forms) ? imported.forms : initial.forms,
+        lastCelebrated: Array.isArray(imported.lastCelebrated) ? imported.lastCelebrated : []
+      };
+    };
+
     function Ring({ label, value }) {
       const r = 42, c = 2 * Math.PI * r, dash = c - (value / 100) * c;
       return <div className="flex flex-col items-center gap-2">
@@ -78,9 +105,13 @@
     function confetti() { for (let i=0;i<60;i++){ const el=document.createElement('div'); el.className='confetti-piece'; el.style.left=Math.random()*100+'vw'; el.style.background=['#22c55e','#38bdf8','#facc15','#f472b6'][i%4]; el.style.animationDelay=Math.random()*300+'ms'; document.body.appendChild(el); setTimeout(()=>el.remove(),1600); } }
 
     function App() {
-      const [state, setState] = useState(() => { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || makeInitialState(); } catch { return makeInitialState(); } });
-      const [tab, setTab] = useState("Dashboard");
-      useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(state)), [state]);
+      const [state, setState] = useState(() => { try { return JSON.parse(safeLocalStorageGet(STORAGE_KEY)) || makeInitialState(); } catch { return makeInitialState(); } });
+      const [tab, setTab] = useState(() => {
+        const savedTab = safeLocalStorageGet(ACTIVE_TAB_STORAGE_KEY, "Dashboard");
+        return NAV_TABS.includes(savedTab) ? savedTab : "Dashboard";
+      });
+      useEffect(() => safeLocalStorageSet(STORAGE_KEY, JSON.stringify(state)), [state]);
+      useEffect(() => safeLocalStorageSet(ACTIVE_TAB_STORAGE_KEY, tab), [tab]);
       useEffect(() => { document.documentElement.classList.toggle('dark', state.theme === 'dark'); }, [state.theme]);
 
       const stats = useMemo(() => {
@@ -103,15 +134,16 @@
       }, [stats.mrr, stats.overall]);
 
       const update = fn => setState(s => ({...s, ...fn(s)}));
-      const tabs = ["Dashboard","Timeline","Budget","MRR","Vendors","Forms","Notes"];
+      const tabs = NAV_TABS;
       const downloadJSON = () => { const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`rockdale-msp-progress-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); };
-      const importJSON = e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try { setState(JSON.parse(r.result)); } catch { alert('Invalid JSON backup.'); } }; r.readAsText(f); };
+      const importJSON = e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try { setState(normalizeImportedState(JSON.parse(r.result))); alert('Backup imported successfully.'); } catch (err) { alert(`Invalid JSON backup: ${err.message || 'Please choose a valid Rockdale MSP tracker export.'}`); } finally { e.target.value=''; } }; r.readAsText(f); };
+      const resetProgress = () => { const answer = prompt('This clears all progress saved in this browser. Export a backup first if needed. Type RESET to continue.'); if (answer === 'RESET') setState(makeInitialState()); };
 
       return <main className="min-h-screen bg-slate-100 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
         <header className="sticky top-0 z-20 border-b border-black/10 dark:border-white/10 bg-white/85 dark:bg-slate-950/85 backdrop-blur no-print">
           <div className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div><h1 className="text-2xl font-black tracking-tight">Rockdale MSP Launch Tracker</h1><p className="text-sm opacity-70">60-day launch plan · localStorage powered · GitHub Pages ready</p></div>
-            <div className="flex flex-wrap gap-2">{tabs.map(t=><button key={t} onClick={()=>setTab(t)} className={`rounded-xl px-3 py-2 text-sm font-bold ${tab===t?'bg-slate-950 text-white dark:bg-white dark:text-slate-950':'bg-black/5 dark:bg-white/10'}`}>{t}</button>)}<button onClick={()=>update(s=>({theme:s.theme==='dark'?'light':'dark'}))} className="rounded-xl px-3 py-2 text-sm font-bold bg-black/5 dark:bg-white/10">{state.theme==='dark'?'Light':'Dark'}</button></div>
+            <div><h1 className="text-2xl font-black tracking-tight">Rockdale MSP Launch Tracker</h1><p className="text-sm opacity-70">60-day launch plan · browser-saved progress · remembers your last page</p></div>
+            <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">{tabs.map(t=><button key={t} onClick={()=>setTab(t)} className={`shrink-0 rounded-xl px-3 py-2 text-sm font-bold ${tab===t?'bg-slate-950 text-white dark:bg-white dark:text-slate-950':'bg-black/5 dark:bg-white/10'}`}>{t}</button>)}<button onClick={()=>update(s=>({theme:s.theme==='dark'?'light':'dark'}))} className="shrink-0 rounded-xl px-3 py-2 text-sm font-bold bg-black/5 dark:bg-white/10">{state.theme==='dark'?'Light Mode':'Dark Mode'}</button></div>
           </div>
         </header>
         <section className="mx-auto max-w-7xl px-4 py-6 space-y-6">
@@ -125,8 +157,9 @@
           {tab === "Notes" && <Notes state={state} update={update} />}
           <div className="print-card rounded-3xl bg-white dark:bg-white/5 shadow-sm border border-black/5 dark:border-white/10 p-5 no-print">
             <h2 className="text-xl font-black mb-3">Data Controls</h2>
-            <p className="text-sm opacity-75 mb-4">Progress is stored only in this browser. Export a JSON backup before switching devices or clearing browser data.</p>
-            <div className="flex flex-wrap gap-3"><button onClick={downloadJSON} className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">Export progress JSON</button><label className="rounded-xl bg-sky-600 px-4 py-2 font-bold text-white cursor-pointer">Import progress JSON<input type="file" accept="application/json" onChange={importJSON} className="hidden" /></label><button onClick={()=>window.print()} className="rounded-xl bg-indigo-600 px-4 py-2 font-bold text-white">Print / PDF snapshot</button><button onClick={()=>confirm('Reset all progress?')&&setState(makeInitialState())} className="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">Reset</button></div>
+            <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm font-semibold text-amber-900 dark:text-amber-100 mb-4">Your data is saved only in this browser. Export a JSON backup before switching devices, clearing browser data, or resetting progress.</p>
+            <p className="text-sm opacity-75 mb-4">Use export/import to move progress between browsers or keep a manual backup.</p>
+            <div className="flex flex-wrap gap-3"><button onClick={downloadJSON} className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">Export progress JSON</button><label className="rounded-xl bg-sky-600 px-4 py-2 font-bold text-white cursor-pointer">Import progress JSON<input type="file" accept="application/json" onChange={importJSON} className="hidden" /></label><button onClick={()=>window.print()} className="rounded-xl bg-indigo-600 px-4 py-2 font-bold text-white">Print / PDF snapshot</button><button onClick={resetProgress} className="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">Reset</button></div>
           </div>
         </section>
       </main>;
@@ -134,8 +167,10 @@
 
     function Summary({stats}) { return <div className="grid gap-4 md:grid-cols-4"><Card title="Overall Progress" value={`${stats.done}/${stats.total}`} sub={`${stats.overall}% complete`} /><Card title="Current MRR" value={money(stats.mrr)} sub={`${pct(stats.mrr,3000)}% of $3K target`} /><Card title="Projected Cost" value={money(stats.projected)} sub="Startup + monthly planning" /><Card title="Paid So Far" value={money(stats.spent)} sub="Marked paid in budget" /></div>; }
     function Card({title,value,sub}) { return <div className="print-card rounded-3xl bg-white dark:bg-white/5 shadow-sm border border-black/5 dark:border-white/10 p-5"><p className="text-sm font-bold opacity-60">{title}</p><p className="text-3xl font-black mt-2">{value}</p><p className="text-sm opacity-70 mt-1">{sub}</p></div>; }
-    function Dashboard({stats,state,setTab}) { return <div className="grid gap-6 lg:grid-cols-3"><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10 lg:col-span-2"><h2 className="text-xl font-black mb-5">Month Progress</h2><div className="grid gap-6 md:grid-cols-3"><Ring label="Overall" value={stats.overall}/><Ring label="Month 1" value={stats.m1}/><Ring label="Month 2" value={stats.m2}/></div></div><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10"><h2 className="text-xl font-black mb-4">MRR Targets</h2><Target label="Break-even" current={stats.mrr} target={1100}/><Target label="Day 60 minimum" current={stats.mrr} target={3000}/><Target label="Stretch target" current={stats.mrr} target={8000}/><button onClick={()=>setTab('MRR')} className="mt-5 rounded-xl bg-slate-950 px-4 py-2 text-white dark:bg-white dark:text-slate-950 font-bold">Log Client</button></div></div>; }
-    function Target({label,current,target}) { const v=pct(current,target); return <div className="mb-4"><div className="mb-1 flex justify-between text-sm font-bold"><span>{label}</span><span>{money(current)} / {money(target)}</span></div><Progress value={v}/></div>; }
+    function Dashboard({stats,state,setTab}) { return <div className="grid gap-6 lg:grid-cols-3"><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10 lg:col-span-2"><h2 className="text-xl font-black mb-5">Launch Phase Progress</h2><div className="grid gap-6 md:grid-cols-3"><Ring label="60-Day Launch" value={stats.overall}/><Ring label="Month 1: Foundation" value={stats.m1}/><Ring label="Month 2: Sales + Delivery" value={stats.m2}/></div></div><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10"><h2 className="text-xl font-black mb-4">MRR Targets</h2><Target label="Break-even" current={stats.mrr} target={1100}/><Target label="Day 60 minimum" current={stats.mrr} target={3000}/><Target label="Stretch target" current={stats.mrr} target={8000}/><MRRInsights state={state} stats={stats}/><button onClick={()=>setTab('MRR')} className="mt-5 rounded-xl bg-slate-950 px-4 py-2 text-white dark:bg-white dark:text-slate-950 font-bold">Add Client / MRR</button></div><NextActions state={state} setTab={setTab}/></div>; }
+    function MRRInsights({state,stats}) { const clients=state.clients.length; const avg=clients ? Math.round(stats.mrr/clients) : 0; const gap=Math.max(0,3000-stats.mrr); const needed=gap ? Math.ceil(gap/750) : 0; return <div className="mt-4 grid grid-cols-2 gap-2 text-sm"><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">Clients</p><p className="text-lg font-black">{clients}</p></div><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">Avg MRR</p><p className="text-lg font-black">{money(avg)}</p></div><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">$3K Gap</p><p className="text-lg font-black">{money(gap)}</p></div><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">At $750/mo</p><p className="text-lg font-black">{needed} client{needed===1?'':'s'}</p></div></div>; }
+    function NextActions({state,setTab}) { const next=baseWeeks.flatMap(w=>w.tasks.map((task,i)=>({week:w.id,title:w.title,task,key:`${w.id}-${i}`}))).filter(x=>!state.tasks[x.key]).slice(0,5); return <div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10 lg:col-span-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-black">Next Actions</h2><p className="text-sm opacity-70">The next incomplete launch tasks from your 60-day timeline.</p></div><button onClick={()=>setTab('Timeline')} className="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">Open Timeline</button></div><ol className="mt-4 grid gap-3 md:grid-cols-5">{next.map(item=><li key={item.key} className="rounded-2xl bg-black/5 dark:bg-white/10 p-4"><p className="text-xs font-black uppercase tracking-wide opacity-60">Week {item.week}</p><p className="mt-1 font-bold">{item.task}</p><p className="mt-2 text-xs opacity-60">{item.title}</p></li>)}</ol></div>; }
+    function Target({label,current,target}) { const v=pct(current,target); return <div className="mb-4"><div className="mb-1 flex justify-between text-sm font-bold"><span>{label}</span><span>{money(current)} / {money(target)} · {v}%</span></div><Progress value={v}/></div>; }
     function Timeline({state,update}) { return <div className="space-y-5"><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10"><label className="font-black">Week 1 Start Date </label><input type="date" value={state.startDate} onChange={e=>update(()=>({startDate:e.target.value}))} className="ml-3 rounded-xl border border-black/10 bg-transparent px-3 py-2" /><p className="mt-2 text-sm opacity-70">Changing Week 1 shifts all downstream weeks automatically.</p></div><div className="grid gap-5 lg:grid-cols-2">{baseWeeks.map(w=><WeekCard key={w.id} week={w} state={state} update={update}/>)}</div></div>; }
     function WeekCard({week,state,update}) { const done=week.tasks.filter((_,i)=>state.tasks[`${week.id}-${i}`]).length; const start=addDays(state.startDate,(week.id-1)*7); const end=addDays(start,6); return <div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10"><div className="flex justify-between gap-3"><div><p className="text-sm font-bold opacity-60">Week {week.id} · Month {week.month}</p><h3 className="text-xl font-black">{week.title}</h3><p className="text-sm opacity-70">{start} to {end}</p></div><div className="text-right font-black">{done}/{week.tasks.length}</div></div><div className="my-4"><Progress value={pct(done,week.tasks.length)}/></div><div className="space-y-2">{week.tasks.map((t,i)=><label key={t} className="flex gap-3 rounded-xl p-2 hover:bg-black/5 dark:hover:bg-white/10"><input type="checkbox" checked={!!state.tasks[`${week.id}-${i}`]} onChange={e=>update(s=>({tasks:{...s.tasks,[`${week.id}-${i}`]:e.target.checked}}))}/><span>{t}</span></label>)}</div></div>; }
     function Budget({state,update,stats}) { return <div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10 overflow-x-auto"><h2 className="text-xl font-black mb-4">Budget Tracker</h2><table className="w-full min-w-[820px] text-sm"><thead><tr className="text-left opacity-70"><th>Expense</th><th>Cadence</th><th>Estimated</th><th>Actual</th><th>Status</th><th>Notes</th></tr></thead><tbody>{state.budget.map(b=><tr key={b.id} className="border-t border-black/5 dark:border-white/10"><td className="py-2 font-bold">{b.name}</td><td>{b.cadence}</td><td>{money(b.estimated)}</td><td><input type="number" value={b.actual} onChange={e=>update(s=>({budget:s.budget.map(x=>x.id===b.id?{...x,actual:e.target.value}:x)}))} className="w-24 rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1"/></td><td><select value={b.status} onChange={e=>update(s=>({budget:s.budget.map(x=>x.id===b.id?{...x,status:e.target.value}:x)}))} className="rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1"><option>pending</option><option>paid</option></select></td><td><input value={b.notes} onChange={e=>update(s=>({budget:s.budget.map(x=>x.id===b.id?{...x,notes:e.target.value}:x)}))} className="w-full rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1"/></td></tr>)}</tbody></table><p className="mt-4 font-bold">Projected: {money(stats.projected)} · Paid: {money(stats.spent)}</p></div>; }
