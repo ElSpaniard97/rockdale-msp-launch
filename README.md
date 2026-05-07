@@ -35,7 +35,7 @@ Interactive 60-day launch tracker for starting a local IT Managed Service Provid
 The app will publish as:
 
 ```text
-https://<your-github-username>.github.io/rockdale-msp-launch/
+https://elspaniard97.github.io/rockdale-msp-launch/
 ```
 
 ## Data Storage Warning
