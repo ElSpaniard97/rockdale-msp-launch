@@ -1,15 +1,26 @@
-# Rockdale MSP Launch
+# AnchorLink Tech MSP Launch
 
-Interactive 60-day launch tracker for starting a local IT Managed Service Provider business in Rockdale, Texas.
+Interactive 60-day launch tracker for starting AnchorLink Tech, a managed technology services provider serving Rockdale and Central Texas.
 
 ## Contents
 
 - `rockdale_msp_launch_plan.pdf` — Original 60-day MSP launch plan
 - `index.html` — Self-contained React progress tracker web app
+- `assets/anchorlink-tech-logo.svg` — AnchorLink Tech horizontal logo/wordmark
+- `assets/anchorlink-tech-icon.svg` — AnchorLink Tech app icon/favicon
+
+## Brand
+
+Name: **AnchorLink Tech**
+
+Tagline: **Managed Technology Services**
+
+Brand pillars: **Reliable · Connected · Secure · Supported**
 
 ## Tracker Features
 
 - 8-week milestone checklist with live progress
+- AnchorLink Tech branding, logo panel, app icon, and favicon
 - Dashboard next-action cards for the next incomplete launch tasks
 - Month 1 and Month 2 completion rings with launch phase labels
 - MRR insights for clients logged, average MRR, $3K gap, and estimated clients needed
@@ -57,8 +68,8 @@ MIT. See `LICENSE`.
 
 ```bash
 git init
-git add README.md rockdale_msp_launch_plan.pdf index.html
-git commit -m "Initial Rockdale MSP launch tracker"
+git add README.md rockdale_msp_launch_plan.pdf index.html assets/
+git commit -m "Initial AnchorLink Tech MSP launch tracker"
 git branch -M main
 git remote add origin https://github.com/ElSpaniard97/rockdale-msp-launch.git
 git push -u origin main

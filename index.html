@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Rockdale MSP Launch Tracker</title>
+  <title>AnchorLink Tech MSP Launch Tracker</title>
+  <meta name="description" content="AnchorLink Tech managed technology services launch tracker." />
+  <link rel="icon" href="assets/anchorlink-tech-icon.svg" type="image/svg+xml" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -28,6 +30,8 @@
     const STORAGE_KEY = "rockdale-msp-launch-v1";
     const ACTIVE_TAB_STORAGE_KEY = "rockdale-msp-launch-active-tab-v1";
     const NAV_TABS = ["Dashboard","Timeline","Budget","MRR","Vendors","Forms","Notes"];
+    const BRAND_NAME = "AnchorLink Tech";
+    const BRAND_TAGLINE = "Managed Technology Services";
 
     const safeLocalStorageGet = (key, fallback = null) => {
       try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
@@ -135,18 +139,19 @@
 
       const update = fn => setState(s => ({...s, ...fn(s)}));
       const tabs = NAV_TABS;
-      const downloadJSON = () => { const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`rockdale-msp-progress-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); };
+      const downloadJSON = () => { const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`anchorlink-tech-msp-progress-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); };
       const importJSON = e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try { setState(normalizeImportedState(JSON.parse(r.result))); alert('Backup imported successfully.'); } catch (err) { alert(`Invalid JSON backup: ${err.message || 'Please choose a valid Rockdale MSP tracker export.'}`); } finally { e.target.value=''; } }; r.readAsText(f); };
       const resetProgress = () => { const answer = prompt('This clears all progress saved in this browser. Export a backup first if needed. Type RESET to continue.'); if (answer === 'RESET') setState(makeInitialState()); };
 
       return <main className="min-h-screen bg-slate-100 text-slate-950 dark:bg-slate-950 dark:text-slate-100">
         <header className="sticky top-0 z-20 border-b border-black/10 dark:border-white/10 bg-white/85 dark:bg-slate-950/85 backdrop-blur no-print">
           <div className="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div><h1 className="text-2xl font-black tracking-tight">Rockdale MSP Launch Tracker</h1><p className="text-sm opacity-70">60-day launch plan · browser-saved progress · remembers your last page</p></div>
+            <div className="flex items-center gap-3"><img src="assets/anchorlink-tech-icon.svg" alt="AnchorLink Tech anchor logo" className="h-14 w-14 rounded-2xl shadow-sm"/><div><p className="text-xs font-black uppercase tracking-[0.28em] text-cyan-700 dark:text-cyan-300">{BRAND_TAGLINE}</p><h1 className="text-2xl font-black tracking-tight">{BRAND_NAME} MSP Launch Tracker</h1><p className="text-sm opacity-70">60-day launch plan · browser-saved progress · remembers your last page</p></div></div>
             <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible">{tabs.map(t=><button key={t} onClick={()=>setTab(t)} className={`shrink-0 rounded-xl px-3 py-2 text-sm font-bold ${tab===t?'bg-slate-950 text-white dark:bg-white dark:text-slate-950':'bg-black/5 dark:bg-white/10'}`}>{t}</button>)}<button onClick={()=>update(s=>({theme:s.theme==='dark'?'light':'dark'}))} className="shrink-0 rounded-xl px-3 py-2 text-sm font-bold bg-black/5 dark:bg-white/10">{state.theme==='dark'?'Light Mode':'Dark Mode'}</button></div>
           </div>
         </header>
         <section className="mx-auto max-w-7xl px-4 py-6 space-y-6">
+          <BrandPanel />
           <Summary stats={stats} />
           {tab === "Dashboard" && <Dashboard stats={stats} state={state} setTab={setTab} />}
           {tab === "Timeline" && <Timeline state={state} update={update} />}
@@ -165,6 +170,7 @@
       </main>;
     }
 
+    function BrandPanel() { return <div className="print-card overflow-hidden rounded-3xl bg-white dark:bg-white/5 shadow-sm border border-black/5 dark:border-white/10"><div className="grid gap-0 lg:grid-cols-[1.25fr_.75fr]"><div className="p-6 sm:p-8"><img src="assets/anchorlink-tech-logo.svg" alt="AnchorLink Tech Managed Technology Services logo" className="max-h-44 w-full object-contain object-left"/><p className="mt-4 max-w-3xl text-sm font-semibold text-slate-600 dark:text-slate-300">Reliable · Connected · Secure · Supported launch tracking for AnchorLink Tech's managed technology services rollout.</p></div><div className="flex items-center bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white"><div><p className="text-xs font-black uppercase tracking-[0.32em] text-cyan-300">Brand Identity</p><h2 className="mt-3 text-3xl font-black">AnchorLink Tech</h2><p className="mt-2 text-sm text-slate-300">Managed Technology Services</p><div className="mt-5 grid grid-cols-2 gap-3 text-sm font-bold"><span className="rounded-2xl bg-white/10 p-3">Reliable</span><span className="rounded-2xl bg-white/10 p-3">Connected</span><span className="rounded-2xl bg-white/10 p-3">Secure</span><span className="rounded-2xl bg-white/10 p-3">Supported</span></div></div></div></div></div>; }
     function Summary({stats}) { return <div className="grid gap-4 md:grid-cols-4"><Card title="Overall Progress" value={`${stats.done}/${stats.total}`} sub={`${stats.overall}% complete`} /><Card title="Current MRR" value={money(stats.mrr)} sub={`${pct(stats.mrr,3000)}% of $3K target`} /><Card title="Projected Cost" value={money(stats.projected)} sub="Startup + monthly planning" /><Card title="Paid So Far" value={money(stats.spent)} sub="Marked paid in budget" /></div>; }
     function Card({title,value,sub}) { return <div className="print-card rounded-3xl bg-white dark:bg-white/5 shadow-sm border border-black/5 dark:border-white/10 p-5"><p className="text-sm font-bold opacity-60">{title}</p><p className="text-3xl font-black mt-2">{value}</p><p className="text-sm opacity-70 mt-1">{sub}</p></div>; }
     function Dashboard({stats,state,setTab}) { return <div className="grid gap-6 lg:grid-cols-3"><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10 lg:col-span-2"><h2 className="text-xl font-black mb-5">Launch Phase Progress</h2><div className="grid gap-6 md:grid-cols-3"><Ring label="60-Day Launch" value={stats.overall}/><Ring label="Month 1: Foundation" value={stats.m1}/><Ring label="Month 2: Sales + Delivery" value={stats.m2}/></div></div><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10"><h2 className="text-xl font-black mb-4">MRR Targets</h2><Target label="Break-even" current={stats.mrr} target={1100}/><Target label="Day 60 minimum" current={stats.mrr} target={3000}/><Target label="Stretch target" current={stats.mrr} target={8000}/><MRRInsights state={state} stats={stats}/><button onClick={()=>setTab('MRR')} className="mt-5 rounded-xl bg-slate-950 px-4 py-2 text-white dark:bg-white dark:text-slate-950 font-bold">Add Client / MRR</button></div><NextActions state={state} setTab={setTab}/></div>; }

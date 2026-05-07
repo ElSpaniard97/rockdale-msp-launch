@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">AnchorLink Tech icon</title>
+  <desc id="desc">Navy and teal anchor with connected link.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#071b42"/><stop offset="1" stop-color="#092e6e"/></linearGradient>
+    <linearGradient id="teal" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#00a6b8"/><stop offset="1" stop-color="#087486"/></linearGradient>
+    <linearGradient id="silver" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#f4f7fa"/><stop offset="1" stop-color="#70777f"/></linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="92" fill="url(#bg)"/>
+  <path d="M256 70a44 44 0 1 0 0 88 44 44 0 0 0 0-88zm0-40a84 84 0 0 1 38 159v111c0 47 25 81 72 104l-31 55c-36-17-63-42-79-75-16 33-43 58-79 75l-31-55c47-23 72-57 72-104V189A84 84 0 0 1 256 30z" fill="#ffffff"/>
+  <path d="M90 178c108 13 224 13 332 0l18 45c-121 17-247 17-368 0z" fill="#ffffff"/>
+  <path d="M143 288c-25 30-38 62-38 94 37 47 87 76 151 87 64-11 114-40 151-87 0-32-13-64-38-94l-45 26c12 20 18 39 18 57-22 22-51 38-86 47-35-9-64-25-86-47 0-18 6-37 18-57z" fill="#ffffff"/>
+  <path d="M226 235c-24 24-24 63 0 87l44 44c22 22 57 22 79 0 17-17 22-41 13-62l-40 40a22 22 0 0 1-30 0l-44-44a37 37 0 0 1 0-52l40-40v-58z" fill="url(#teal)"/>
+  <path d="M266 210c22-22 57-22 79 0l44 44c24 24 24 63 0 87l-40 40v-58l24-24a37 37 0 0 0 0-52l-44-44a22 22 0 0 0-30 0l-24 24-28-28z" fill="url(#silver)"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="10">
+    <path d="M166 255h-54l-30-30" stroke="#00a6b8"/><circle cx="68" cy="211" r="16" stroke="#00a6b8"/>
+    <path d="M346 255h54l30-30" stroke="#00a6b8"/><circle cx="444" cy="211" r="16" stroke="#00a6b8"/>
+  </g>
+</svg>
