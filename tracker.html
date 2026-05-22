@@ -108,6 +108,24 @@
     lastCelebrated: []
   });
 
+  // One-shot migration: prune budget items that were tied to the old
+  // third-party MSP stack (now consolidated to Zoho One). Runs once per
+  // browser, guarded by migratedBudgetV2.
+  const LEGACY_BUDGET_NAMES = new Set([
+    "Pax8 distributor account", "Syncro", "Huntress", "DNSFilter",
+    "Acronis via Pax8", "Hudu", "QuickBooks Online", "HubSpot CRM",
+    "Google Workspace Business Starter", "Domain + Google Workspace"
+  ]);
+  const migrateState = state => {
+    if (!state || state.migratedBudgetV2) return state;
+    const budget = (Array.isArray(state.budget) ? state.budget : [])
+      .filter(b => b && !LEGACY_BUDGET_NAMES.has(b.name));
+    if (!budget.some(b => b.name === "Zoho One")) {
+      budget.push({ id: crypto.randomUUID(), name: "Zoho One", estimated: 45, actual: "", cadence: "monthly", status: "pending", notes: "" });
+    }
+    return { ...state, budget, migratedBudgetV2: true };
+  };
+
   const normalizeImportedState = imported => {
     if (!imported || typeof imported !== 'object' || Array.isArray(imported)) throw new Error('Backup must be a JSON object.');
     const initial = makeInitialState();
@@ -135,7 +153,12 @@
   function confetti() { for (let i=0;i<60;i++){ const el=document.createElement('div'); el.className='confetti-piece'; el.style.left=Math.random()*100+'vw'; el.style.background=['#2e9d6a','#5aafc4','#2f7f99','#07184a'][i%4]; el.style.animationDelay=Math.random()*300+'ms'; document.body.appendChild(el); setTimeout(()=>el.remove(),1600); } }
 
   function App() {
-    const [state, setState] = useState(() => { try { return JSON.parse(safeLocalStorageGet(STORAGE_KEY)) || makeInitialState(); } catch { return makeInitialState(); } });
+    const [state, setState] = useState(() => {
+      try {
+        const parsed = JSON.parse(safeLocalStorageGet(STORAGE_KEY));
+        return migrateState(parsed) || makeInitialState();
+      } catch { return makeInitialState(); }
+    });
     const [tab, setTab] = useState(() => {
       const savedTab = safeLocalStorageGet(ACTIVE_TAB_STORAGE_KEY, "Dashboard");
       return NAV_TABS.includes(savedTab) ? savedTab : "Dashboard";
