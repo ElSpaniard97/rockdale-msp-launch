@@ -7,7 +7,7 @@ This repo is the launch tracker only. The customer-facing marketing site lives i
 ## Contents
 
 - `index.html` — Dashboard (high-level launch snapshot, reads tracker localStorage)
-- `tracker.html` — Full React-based 60-day launch tracker (checklists, MRR, budget, vendors, forms, notes)
+- `tracker.html` — Full React-based 60-day launch tracker (checklists, MRR, budget, forms, notes)
 - `style.css` — Shared Lone Star ITS visual system (navy + teal + silver palette)
 - `main.js` — Shared dark-mode toggle and mobile hamburger nav
 - `logo.png` — Lone Star ITS full brand logo
@@ -27,7 +27,7 @@ Brand pillars: **Reliable · Connected · Secure · Supported**
 | Page | Purpose |
 | --- | --- |
 | `index.html` | Read-only dashboard: overall %, Month 1 / Month 2 rings, MRR targets, next actions, budget snapshot. Reads from the same browser localStorage that `tracker.html` writes. |
-| `tracker.html` | Full interactive tracker. Editable timeline, budget, MRR, vendor and forms checklists, weekly notes, export/import, print snapshot. |
+| `tracker.html` | Full interactive tracker. Editable timeline, budget, MRR, forms checklist, weekly notes, export/import, print snapshot. |
 
 ## Tracker Features
 
@@ -38,7 +38,6 @@ Brand pillars: **Reliable · Connected · Secure · Supported**
 - Editable week timeline with downstream auto-shift
 - Budget tracker for projected vs. actual spend
 - MRR tracker with break-even, $3K, and $8K progress targets
-- Vendor signup checklist
 - Required forms checklist
 - Weekly notes/journal
 - Dark/light mode shared across both pages
