@@ -82,11 +82,23 @@
   const baseWeeks = window.LSI_WEEKS;
 
   const baseBudget = [
-    ["Texas LLC formation", 300, "one-time"], ["EIN registration", 0, "one-time"], ["Business insurance setup", 167, "monthly"], ["Domain + Google Workspace", 120, "yearly"], ["Business checking", 0, "one-time"], ["MSA/SLA attorney review", 350, "one-time"], ["Vehicle vinyl / branding", 1000, "one-time"], ["Website/domain/hosting", 200, "one-time"], ["Business cards / print collateral", 100, "one-time"], ["Pax8 distributor account", 0, "one-time"],
-    ["Syncro", 159, "monthly"], ["Huntress", 150, "monthly"], ["DNSFilter", 150, "monthly"], ["Acronis via Pax8", 25, "monthly"], ["Hudu", 35, "monthly"], ["QuickBooks Online", 35, "monthly"], ["HubSpot CRM", 0, "monthly"], ["Google Workspace Business Starter", 8.4, "monthly"], ["Fuel / vehicle", 225, "monthly"], ["Chamber membership", 25, "monthly"]
+    ["Texas LLC formation", 300, "one-time"],
+    ["EIN registration", 0, "one-time"],
+    ["Business insurance setup", 167, "monthly"],
+    ["Domain registration", 20, "yearly"],
+    ["Business checking", 0, "one-time"],
+    ["MSA/SLA attorney review", 350, "one-time"],
+    ["Vehicle vinyl / branding", 1000, "one-time"],
+    ["Website hosting", 200, "one-time"],
+    ["Business cards / print collateral", 100, "one-time"],
+    ["Zoho One", 45, "monthly"],
+    ["Fuel / vehicle", 225, "monthly"],
+    ["Chamber membership", 25, "monthly"]
   ].map((x, i) => ({ id: crypto.randomUUID(), name: x[0], estimated: x[1], actual: "", cadence: x[2], status: "pending", notes: "" }));
 
-  const baseVendors = ["Pax8", "HubSpot CRM", "QuickBooks Online", "Syncro", "Huntress", "Acronis", "DNSFilter", "Hudu"].map((name, i) => ({ id: i + 1, name, status: "Not Started", signupDate: "", monthlyCost: [0,0,35,159,150,25,150,35][i], notes: "" }));
+  const baseVendors = [
+    { name: "Zoho One", monthlyCost: 45 }
+  ].map((v, i) => ({ id: i + 1, name: v.name, status: "Not Started", signupDate: "", monthlyCost: v.monthlyCost, notes: "" }));
   const baseForms = ["Master Service Agreement", "Service Level Agreement", "Client Onboarding Questionnaire", "Network & Environment Assessment Form", "Monthly Client Report Template", "New User / Offboarding Request Form", "Incident Response Report", "Change Request / Approval Form"].map((name, i) => ({ id: i + 1, name, status: "Not Created", owner: "Ezekiel", updated: "", notes: "" }));
 
   const makeInitialState = () => ({
