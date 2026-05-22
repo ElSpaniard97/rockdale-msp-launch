@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lone Star ITS | Launch Tracker</title>
+  <meta name="description" content="Lone Star ITS internal 60-day managed technology services launch tracker." />
+  <link rel="icon" type="image/png" href="logo-mark.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Sync Tailwind dark mode with shared body.dark-mode toggle in main.js
+    tailwind.config = { darkMode: 'class' };
+  </script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    .ring-tw { transform: rotate(-90deg); }
+    .confetti-piece { position: fixed; top: -12px; width: 8px; height: 14px; opacity: .9; animation: fall 1100ms linear forwards; z-index: 9999; }
+    @keyframes fall { to { transform: translateY(105vh) rotate(540deg); opacity: 0; } }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; color: black !important; }
+      .print-card { break-inside: avoid; border: 1px solid #ddd !important; box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body class="tracker-page">
+
+<header class="site-header no-print">
+  <a class="brand" href="index.html" aria-label="Lone Star ITS home">
+    <img src="logo-mark.png" alt="Lone Star ITS blue star logo mark">
+    <span class="brand-copy"><strong><span>Lone</span> Star</strong><small>ITS</small></span>
+  </a>
+  <div class="header-right">
+    <nav id="main-nav">
+      <a href="index.html">Dashboard</a>
+      <a class="active" href="tracker.html">Tracker</a>
+    </nav>
+    <button class="dark-toggle" id="dark-mode-toggle">Dark</button>
+    <button class="hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<div id="root"></div>
+
+<footer class="site-footer no-print">
+  <p>© 2026 Lone Star ITS — Managed Technology Services. Reliable · Connected · Secure · Supported.</p>
+  <p class="footer-links">Internal launch tracker · Data stored locally in this browser</p>
+</footer>
+
+<script src="main.js"></script>
+<script src="data.js"></script>
+<script type="text/babel">
+  const { useEffect, useMemo, useState } = React;
+  const STORAGE_KEY = "rockdale-msp-launch-v1";
+  const ACTIVE_TAB_STORAGE_KEY = "rockdale-msp-launch-active-tab-v1";
+  const NAV_TABS = ["Dashboard","Timeline","Budget","MRR","Vendors","Forms","Notes"];
+  const BRAND_NAME = "Lone Star ITS";
+  const BRAND_TAGLINE = "Managed Technology Services";
+
+  const safeLocalStorageGet = (key, fallback = null) => {
+    try { return localStorage.getItem(key) ?? fallback; } catch { return fallback; }
+  };
+  const safeLocalStorageSet = (key, value) => {
+    try { localStorage.setItem(key, value); } catch {}
+  };
+
+  const todayISO = () => new Date().toISOString().slice(0,10);
+  const addDays = (iso, days) => {
+    const d = new Date(iso + "T12:00:00");
+    d.setDate(d.getDate() + days);
+    return d.toISOString().slice(0,10);
+  };
+  const money = n => Number(n || 0).toLocaleString(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+  const pct = (done, total) => total ? Math.round((done / total) * 100) : 0;
+
+  const baseWeeks = window.LSI_WEEKS;
+
+  const baseBudget = [
+    ["Texas LLC formation", 300, "one-time"], ["EIN registration", 0, "one-time"], ["Business insurance setup", 167, "monthly"], ["Domain + Google Workspace", 120, "yearly"], ["Business checking", 0, "one-time"], ["MSA/SLA attorney review", 350, "one-time"], ["Vehicle vinyl / branding", 1000, "one-time"], ["Website/domain/hosting", 200, "one-time"], ["Business cards / print collateral", 100, "one-time"], ["Pax8 distributor account", 0, "one-time"],
+    ["Syncro", 159, "monthly"], ["Huntress", 150, "monthly"], ["DNSFilter", 150, "monthly"], ["Acronis via Pax8", 25, "monthly"], ["Hudu", 35, "monthly"], ["QuickBooks Online", 35, "monthly"], ["HubSpot CRM", 0, "monthly"], ["Google Workspace Business Starter", 8.4, "monthly"], ["Fuel / vehicle", 225, "monthly"], ["Chamber membership", 25, "monthly"]
+  ].map((x, i) => ({ id: crypto.randomUUID(), name: x[0], estimated: x[1], actual: "", cadence: x[2], status: "pending", notes: "" }));
+
+  const baseVendors = ["Pax8", "HubSpot CRM", "QuickBooks Online", "Syncro", "Huntress", "Acronis", "DNSFilter", "Hudu"].map((name, i) => ({ id: i + 1, name, status: "Not Started", signupDate: "", monthlyCost: [0,0,35,159,150,25,150,35][i], notes: "" }));
+  const baseForms = ["Master Service Agreement", "Service Level Agreement", "Client Onboarding Questionnaire", "Network & Environment Assessment Form", "Monthly Client Report Template", "New User / Offboarding Request Form", "Incident Response Report", "Change Request / Approval Form"].map((name, i) => ({ id: i + 1, name, status: "Not Created", owner: "Ezekiel", updated: "", notes: "" }));
+
+  const makeInitialState = () => ({
+    startDate: todayISO(),
+    tasks: Object.fromEntries(baseWeeks.flatMap(w => w.tasks.map((_, i) => [`${w.id}-${i}`, false]))),
+    notes: Object.fromEntries(baseWeeks.map(w => [w.id, ""])),
+    budget: baseBudget,
+    clients: [],
+    vendors: baseVendors,
+    forms: baseForms,
+    lastCelebrated: []
+  });
+
+  const normalizeImportedState = imported => {
+    if (!imported || typeof imported !== 'object' || Array.isArray(imported)) throw new Error('Backup must be a JSON object.');
+    const initial = makeInitialState();
+    return {
+      ...initial,
+      ...imported,
+      startDate: typeof imported.startDate === 'string' ? imported.startDate : initial.startDate,
+      tasks: {...initial.tasks, ...(imported.tasks && typeof imported.tasks === 'object' ? imported.tasks : {})},
+      notes: {...initial.notes, ...(imported.notes && typeof imported.notes === 'object' ? imported.notes : {})},
+      budget: Array.isArray(imported.budget) ? imported.budget : initial.budget,
+      clients: Array.isArray(imported.clients) ? imported.clients : initial.clients,
+      vendors: Array.isArray(imported.vendors) ? imported.vendors : initial.vendors,
+      forms: Array.isArray(imported.forms) ? imported.forms : initial.forms,
+      lastCelebrated: Array.isArray(imported.lastCelebrated) ? imported.lastCelebrated : []
+    };
+  };
+
+  function Ring({ label, value }) {
+    const r = 42, c = 2 * Math.PI * r, dash = c - (value / 100) * c;
+    return <div className="flex flex-col items-center gap-2">
+      <svg width="112" height="112" className="ring-tw"><circle cx="56" cy="56" r={r} stroke="currentColor" strokeOpacity=".12" strokeWidth="12" fill="none"/><circle cx="56" cy="56" r={r} stroke="currentColor" strokeWidth="12" fill="none" strokeDasharray={c} strokeDashoffset={dash} strokeLinecap="round"/></svg>
+      <div className="-mt-20 mb-8 text-2xl font-black">{value}%</div><div className="text-sm font-semibold opacity-80">{label}</div>
+    </div>;
+  }
+  function Progress({ value }) { return <div className="h-3 w-full rounded-full bg-black/10 dark:bg-white/10 overflow-hidden"><div className="h-full rounded-full bg-current" style={{width: `${Math.min(100, value)}%`}} /></div>; }
+  function confetti() { for (let i=0;i<60;i++){ const el=document.createElement('div'); el.className='confetti-piece'; el.style.left=Math.random()*100+'vw'; el.style.background=['#2e9d6a','#5aafc4','#2f7f99','#07184a'][i%4]; el.style.animationDelay=Math.random()*300+'ms'; document.body.appendChild(el); setTimeout(()=>el.remove(),1600); } }
+
+  function App() {
+    const [state, setState] = useState(() => { try { return JSON.parse(safeLocalStorageGet(STORAGE_KEY)) || makeInitialState(); } catch { return makeInitialState(); } });
+    const [tab, setTab] = useState(() => {
+      const savedTab = safeLocalStorageGet(ACTIVE_TAB_STORAGE_KEY, "Dashboard");
+      return NAV_TABS.includes(savedTab) ? savedTab : "Dashboard";
+    });
+    useEffect(() => safeLocalStorageSet(STORAGE_KEY, JSON.stringify(state)), [state]);
+    useEffect(() => safeLocalStorageSet(ACTIVE_TAB_STORAGE_KEY, tab), [tab]);
+
+    const stats = useMemo(() => {
+      const allTasks = baseWeeks.flatMap(w => w.tasks.map((_, i) => `${w.id}-${i}`));
+      const done = allTasks.filter(k => state.tasks[k]).length;
+      const m1Keys = baseWeeks.filter(w => w.month === 1).flatMap(w => w.tasks.map((_, i) => `${w.id}-${i}`));
+      const m2Keys = baseWeeks.filter(w => w.month === 2).flatMap(w => w.tasks.map((_, i) => `${w.id}-${i}`));
+      const mrr = state.clients.reduce((a,c)=>a+Number(c.value||0),0);
+      const projected = state.budget.reduce((a,b)=>a+Number(b.estimated||0),0);
+      const spent = state.budget.filter(b=>b.status==='paid').reduce((a,b)=>a+Number(b.actual || b.estimated || 0),0);
+      return { done, total: allTasks.length, overall: pct(done, allTasks.length), m1: pct(m1Keys.filter(k=>state.tasks[k]).length, m1Keys.length), m2: pct(m2Keys.filter(k=>state.tasks[k]).length, m2Keys.length), mrr, projected, spent };
+    }, [state]);
+
+    useEffect(() => {
+      const wins = [];
+      baseWeeks.forEach(w => { if (pct(w.tasks.filter((_,i)=>state.tasks[`${w.id}-${i}`]).length, w.tasks.length) === 100) wins.push(`week-${w.id}`); });
+      [[1100,'break-even'],[3000,'3k'],[8000,'8k']].forEach(([target,id]) => { if (stats.mrr >= target) wins.push(`mrr-${id}`); });
+      const fresh = wins.filter(w => !state.lastCelebrated.includes(w));
+      if (fresh.length) { confetti(); setState(s => ({...s, lastCelebrated: [...new Set([...s.lastCelebrated, ...fresh])]})); }
+    }, [stats.mrr, stats.overall]);
+
+    const update = fn => setState(s => ({...s, ...fn(s)}));
+    const tabs = NAV_TABS;
+    const downloadJSON = () => { const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`lone-star-its-launch-${todayISO()}.json`; a.click(); URL.revokeObjectURL(a.href); };
+    const importJSON = e => { const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try { setState(normalizeImportedState(JSON.parse(r.result))); alert('Backup imported successfully.'); } catch (err) { alert(`Invalid JSON backup: ${err.message || 'Please choose a valid Lone Star ITS launch tracker export.'}`); } finally { e.target.value=''; } }; r.readAsText(f); };
+    const resetProgress = () => { const answer = prompt('This clears all progress saved in this browser. Export a backup first if needed. Type RESET to continue.'); if (answer === 'RESET') setState(makeInitialState()); };
+
+    return <main className="text-slate-950 dark:text-slate-100" style={{paddingTop: '6px'}}>
+      <section className="mx-auto px-4 py-6 space-y-6" style={{width: 'min(1120px, calc(100% - 32px))'}}>
+        <div className="rounded-3xl border border-black/5 dark:border-white/10 shadow-sm overflow-hidden">
+          <div className="grid gap-0 lg:grid-cols-[1.25fr_.75fr]">
+            <div className="p-6 sm:p-8 bg-white/90 dark:bg-white/5">
+              <p className="text-xs font-black uppercase tracking-[0.28em]" style={{color: 'var(--teal)'}}>{BRAND_TAGLINE}</p>
+              <h1 className="mt-2 text-3xl font-black tracking-tight" style={{fontFamily: 'Rajdhani, Inter, sans-serif', color: 'var(--navy)'}}>{BRAND_NAME} Launch Tracker</h1>
+              <p className="mt-3 text-sm" style={{color: 'var(--muted)'}}>60-day launch plan · browser-saved progress · remembers your last page</p>
+              <p className="mt-4 max-w-3xl text-sm font-semibold" style={{color: 'var(--muted)'}}>Reliable · Connected · Secure · Supported launch tracking for Lone Star ITS' managed technology services rollout.</p>
+            </div>
+            <div className="flex items-center bg-gradient-to-br from-slate-950 via-slate-900 to-cyan-950 p-6 text-white">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.32em]" style={{color: 'var(--teal-light)'}}>Brand Identity</p>
+                <h2 className="mt-3 text-3xl font-black" style={{fontFamily: 'Rajdhani, Inter, sans-serif'}}>Lone Star ITS</h2>
+                <p className="mt-2 text-sm text-slate-300">Managed Technology Services</p>
+                <div className="mt-5 grid grid-cols-2 gap-3 text-sm font-bold">
+                  <span className="rounded-2xl bg-white/10 p-3">Reliable</span>
+                  <span className="rounded-2xl bg-white/10 p-3">Connected</span>
+                  <span className="rounded-2xl bg-white/10 p-3">Secure</span>
+                  <span className="rounded-2xl bg-white/10 p-3">Supported</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible no-print">
+          {tabs.map(t=><button key={t} onClick={()=>setTab(t)} className={`shrink-0 rounded-xl px-3 py-2 text-sm font-bold ${tab===t?'text-white':'bg-black/5 dark:bg-white/10'}`} style={tab===t?{background:'linear-gradient(135deg, var(--navy), var(--teal))'}:{}}>{t}</button>)}
+        </div>
+
+        <Summary stats={stats} />
+        {tab === "Dashboard" && <Dashboard stats={stats} state={state} setTab={setTab} />}
+        {tab === "Timeline" && <Timeline state={state} update={update} />}
+        {tab === "Budget" && <Budget state={state} update={update} stats={stats} />}
+        {tab === "MRR" && <MRR state={state} update={update} stats={stats} />}
+        {tab === "Vendors" && <Vendors state={state} update={update} />}
+        {tab === "Forms" && <Forms state={state} update={update} />}
+        {tab === "Notes" && <Notes state={state} update={update} />}
+        <div className="print-card rounded-3xl bg-white dark:bg-white/5 shadow-sm border border-black/5 dark:border-white/10 p-5 no-print">
+          <h2 className="text-xl font-black mb-3">Data Controls</h2>
+          <p className="rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm font-semibold text-amber-900 dark:text-amber-100 mb-4">Your data is saved only in this browser. Export a JSON backup before switching devices, clearing browser data, or resetting progress.</p>
+          <p className="text-sm opacity-75 mb-4">Use export/import to move progress between browsers or keep a manual backup.</p>
+          <div className="flex flex-wrap gap-3">
+            <button onClick={downloadJSON} className="rounded-xl px-4 py-2 font-bold text-white" style={{background:'var(--success)'}}>Export progress JSON</button>
+            <label className="rounded-xl px-4 py-2 font-bold text-white cursor-pointer" style={{background:'var(--teal)'}}>Import progress JSON<input type="file" accept="application/json" onChange={importJSON} className="hidden" /></label>
+            <button onClick={()=>window.print()} className="rounded-xl px-4 py-2 font-bold text-white" style={{background:'var(--navy-2)'}}>Print / PDF snapshot</button>
+            <button onClick={resetProgress} className="rounded-xl px-4 py-2 font-bold text-white" style={{background:'var(--danger)'}}>Reset</button>
+          </div>
+        </div>
+      </section>
+    </main>;
+  }
+
+  function Summary({stats}) { return <div className="grid gap-4 md:grid-cols-4"><Card title="Overall Progress" value={`${stats.done}/${stats.total}`} sub={`${stats.overall}% complete`} /><Card title="Current MRR" value={money(stats.mrr)} sub={`${pct(stats.mrr,3000)}% of $3K target`} /><Card title="Projected Cost" value={money(stats.projected)} sub="Startup + monthly planning" /><Card title="Paid So Far" value={money(stats.spent)} sub="Marked paid in budget" /></div>; }
+  function Card({title,value,sub}) { return <div className="print-card rounded-3xl bg-white dark:bg-white/5 shadow-sm border border-black/5 dark:border-white/10 p-5"><p className="text-sm font-bold opacity-60">{title}</p><p className="text-3xl font-black mt-2" style={{fontFamily:'Rajdhani, Inter, sans-serif', color:'var(--navy)'}}>{value}</p><p className="text-sm opacity-70 mt-1">{sub}</p></div>; }
+  function Dashboard({stats,state,setTab}) { return <div className="grid gap-6 lg:grid-cols-3"><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10 lg:col-span-2"><h2 className="text-xl font-black mb-5">Launch Phase Progress</h2><div className="grid gap-6 md:grid-cols-3"><Ring label="60-Day Launch" value={stats.overall}/><Ring label="Month 1: Foundation" value={stats.m1}/><Ring label="Month 2: Sales + Delivery" value={stats.m2}/></div></div><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10"><h2 className="text-xl font-black mb-4">MRR Targets</h2><Target label="Break-even" current={stats.mrr} target={1100}/><Target label="Day 60 minimum" current={stats.mrr} target={3000}/><Target label="Stretch target" current={stats.mrr} target={8000}/><MRRInsights state={state} stats={stats}/><button onClick={()=>setTab('MRR')} className="mt-5 rounded-xl px-4 py-2 text-white font-bold" style={{background:'var(--navy)'}}>Add Client / MRR</button></div><NextActions state={state} setTab={setTab}/></div>; }
+  function MRRInsights({state,stats}) { const clients=state.clients.length; const avg=clients ? Math.round(stats.mrr/clients) : 0; const gap=Math.max(0,3000-stats.mrr); const needed=gap ? Math.ceil(gap/750) : 0; return <div className="mt-4 grid grid-cols-2 gap-2 text-sm"><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">Clients</p><p className="text-lg font-black">{clients}</p></div><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">Avg MRR</p><p className="text-lg font-black">{money(avg)}</p></div><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">$3K Gap</p><p className="text-lg font-black">{money(gap)}</p></div><div className="rounded-2xl bg-black/5 dark:bg-white/10 p-3"><p className="font-bold opacity-60">At $750/mo</p><p className="text-lg font-black">{needed} client{needed===1?'':'s'}</p></div></div>; }
+  function NextActions({state,setTab}) { const next=baseWeeks.flatMap(w=>w.tasks.map((task,i)=>({week:w.id,title:w.title,task,key:`${w.id}-${i}`}))).filter(x=>!state.tasks[x.key]).slice(0,5); return <div className="print-card rounded-3xl bg-white dark:bg-white/5 p-6 border border-black/5 dark:border-white/10 lg:col-span-3"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-black">Next Actions</h2><p className="text-sm opacity-70">The next incomplete launch tasks from your 60-day timeline.</p></div><button onClick={()=>setTab('Timeline')} className="rounded-xl px-4 py-2 font-bold text-white" style={{background:'var(--success)'}}>Open Timeline</button></div><ol className="mt-4 grid gap-3 md:grid-cols-5">{next.map(item=><li key={item.key} className="rounded-2xl bg-black/5 dark:bg-white/10 p-4"><p className="text-xs font-black uppercase tracking-wide opacity-60">Week {item.week}</p><p className="mt-1 font-bold">{item.task}</p><p className="mt-2 text-xs opacity-60">{item.title}</p></li>)}</ol></div>; }
+  function Target({label,current,target}) { const v=pct(current,target); return <div className="mb-4"><div className="mb-1 flex justify-between text-sm font-bold"><span>{label}</span><span>{money(current)} / {money(target)} · {v}%</span></div><Progress value={v}/></div>; }
+  function Timeline({state,update}) { return <div className="space-y-5"><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10"><label className="font-black">Week 1 Start Date </label><input type="date" value={state.startDate} onChange={e=>update(()=>({startDate:e.target.value}))} className="ml-3 rounded-xl border border-black/10 bg-transparent px-3 py-2" /><p className="mt-2 text-sm opacity-70">Changing Week 1 shifts all downstream weeks automatically.</p></div><div className="grid gap-5 lg:grid-cols-2">{baseWeeks.map(w=><WeekCard key={w.id} week={w} state={state} update={update}/>)}</div></div>; }
+  function WeekCard({week,state,update}) { const done=week.tasks.filter((_,i)=>state.tasks[`${week.id}-${i}`]).length; const start=addDays(state.startDate,(week.id-1)*7); const end=addDays(start,6); return <div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10"><div className="flex justify-between gap-3"><div><p className="text-sm font-bold opacity-60">Week {week.id} · Month {week.month}</p><h3 className="text-xl font-black" style={{fontFamily:'Rajdhani, Inter, sans-serif', color:'var(--navy)'}}>{week.title}</h3><p className="text-sm opacity-70">{start} to {end}</p></div><div className="text-right font-black">{done}/{week.tasks.length}</div></div><div className="my-4"><Progress value={pct(done,week.tasks.length)}/></div><div className="space-y-2">{week.tasks.map((t,i)=><label key={t} className="flex gap-3 rounded-xl p-2 hover:bg-black/5 dark:hover:bg-white/10"><input type="checkbox" checked={!!state.tasks[`${week.id}-${i}`]} onChange={e=>update(s=>({tasks:{...s.tasks,[`${week.id}-${i}`]:e.target.checked}}))}/><span>{t}</span></label>)}</div></div>; }
+  function Budget({state,update,stats}) { return <div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10 overflow-x-auto"><h2 className="text-xl font-black mb-4">Budget Tracker</h2><table className="w-full min-w-[820px] text-sm"><thead><tr className="text-left opacity-70"><th>Expense</th><th>Cadence</th><th>Estimated</th><th>Actual</th><th>Status</th><th>Notes</th></tr></thead><tbody>{state.budget.map(b=><tr key={b.id} className="border-t border-black/5 dark:border-white/10"><td className="py-2 font-bold">{b.name}</td><td>{b.cadence}</td><td>{money(b.estimated)}</td><td><input type="number" value={b.actual} onChange={e=>update(s=>({budget:s.budget.map(x=>x.id===b.id?{...x,actual:e.target.value}:x)}))} className="w-24 rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1"/></td><td><select value={b.status} onChange={e=>update(s=>({budget:s.budget.map(x=>x.id===b.id?{...x,status:e.target.value}:x)}))} className="rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1"><option>pending</option><option>paid</option></select></td><td><input value={b.notes} onChange={e=>update(s=>({budget:s.budget.map(x=>x.id===b.id?{...x,notes:e.target.value}:x)}))} className="w-full rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1"/></td></tr>)}</tbody></table><p className="mt-4 font-bold">Projected: {money(stats.projected)} · Paid: {money(stats.spent)}</p></div>; }
+  function MRR({state,update,stats}) { const add=()=>update(s=>({clients:[...s.clients,{id:crypto.randomUUID(),name:'',vertical:'construction',endpoints:'',value:'',status:'Prospect',notes:''}]})); return <div className="space-y-5"><div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10"><h2 className="text-xl font-black mb-4">MRR Tracker</h2><Target label="Break-even" current={stats.mrr} target={1100}/><Target label="$3K Day 60 target" current={stats.mrr} target={3000}/><Target label="$8K stretch target" current={stats.mrr} target={8000}/><button onClick={add} className="mt-3 rounded-xl px-4 py-2 font-bold text-white" style={{background:'var(--success)'}}>Add Client</button></div><div className="grid gap-4">{state.clients.map(c=><div key={c.id} className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10 grid gap-3 md:grid-cols-6"><input placeholder="Client name" value={c.name} onChange={e=>update(s=>({clients:s.clients.map(x=>x.id===c.id?{...x,name:e.target.value}:x)}))} className="rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2 md:col-span-2"/><select value={c.vertical} onChange={e=>update(s=>({clients:s.clients.map(x=>x.id===c.id?{...x,vertical:e.target.value}:x)}))} className="rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2"><option>construction</option><option>medical/dental</option><option>retail</option><option>agriculture</option><option>industrial</option><option>other</option></select><input placeholder="Endpoints" type="number" value={c.endpoints} onChange={e=>update(s=>({clients:s.clients.map(x=>x.id===c.id?{...x,endpoints:e.target.value}:x)}))} className="rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2"/><input placeholder="Monthly $" type="number" value={c.value} onChange={e=>update(s=>({clients:s.clients.map(x=>x.id===c.id?{...x,value:e.target.value}:x)}))} className="rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2"/><select value={c.status} onChange={e=>update(s=>({clients:s.clients.map(x=>x.id===c.id?{...x,status:e.target.value}:x)}))} className="rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2"><option>Prospect</option><option>Proposal Sent</option><option>Signed</option><option>Onboarded</option></select><textarea placeholder="Notes" value={c.notes} onChange={e=>update(s=>({clients:s.clients.map(x=>x.id===c.id?{...x,notes:e.target.value}:x)}))} className="rounded-xl bg-black/5 dark:bg-white/10 px-3 py-2 md:col-span-6"/></div>)}</div></div>; }
+  function Vendors({state,update}) { return <Checklist title="Vendor Checklist" items={state.vendors} statuses={["Not Started","Trial","Active","Paused","Rejected"]} update={(items)=>update(()=>({vendors:items}))} fields={["signupDate","monthlyCost","notes"]}/>; }
+  function Forms({state,update}) { return <Checklist title="Forms Checklist" items={state.forms} statuses={["Not Created","Draft","Attorney Reviewed","Final","In Use"]} update={(items)=>update(()=>({forms:items}))} fields={["owner","updated","notes"]}/>; }
+  function Checklist({title,items,statuses,update,fields}) { const change=(id,k,v)=>update(items.map(x=>x.id===id?{...x,[k]:v}:x)); return <div className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10 overflow-x-auto"><h2 className="text-xl font-black mb-4">{title}</h2><table className="w-full min-w-[760px] text-sm"><thead><tr className="text-left opacity-70"><th>Name</th><th>Status</th>{fields.map(f=><th key={f}>{f}</th>)}</tr></thead><tbody>{items.map(it=><tr key={it.id} className="border-t border-black/5 dark:border-white/10"><td className="py-2 font-bold">{it.name}</td><td><select value={it.status} onChange={e=>change(it.id,'status',e.target.value)} className="rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1">{statuses.map(s=><option key={s}>{s}</option>)}</select></td>{fields.map(f=><td key={f}><input type={f.toLowerCase().includes('date')||f==='updated'?'date':f==='monthlyCost'?'number':'text'} value={it[f]||''} onChange={e=>change(it.id,f,e.target.value)} className="w-full rounded-lg bg-black/5 dark:bg-white/10 px-2 py-1"/></td>)}</tr>)}</tbody></table></div>; }
+  function Notes({state,update}) { return <div className="grid gap-5 lg:grid-cols-2">{baseWeeks.map(w=><div key={w.id} className="print-card rounded-3xl bg-white dark:bg-white/5 p-5 border border-black/5 dark:border-white/10"><h3 className="text-xl font-black" style={{fontFamily:'Rajdhani, Inter, sans-serif', color:'var(--navy)'}}>Week {w.id}: {w.title}</h3><textarea rows="8" value={state.notes[w.id]||''} onChange={e=>update(s=>({notes:{...s.notes,[w.id]:e.target.value}}))} placeholder="What happened this week? Wins, blockers, lessons learned..." className="mt-3 w-full rounded-2xl bg-black/5 dark:bg-white/10 px-4 py-3"/></div>)}</div>; }
+
+  ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
